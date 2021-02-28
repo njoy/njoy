@@ -242,8 +242,9 @@ contains
    !     30           ukaea 1025-group structure  (30 MeV)
    !     31           ukaea 1067-group structure (200 MeV)
    !     32           ukaea 1102-group structure   (1 GeV)
-   !     33           ukaea  142-group structure (200 MeV)   
+   !     33           ukaea  142-group structure (200 MeV)
    !     34           lanl 618-group structure
+   !     35           sand-iv 770-group structure
    !
    !     igg          meaning
    !     ---          -------
@@ -1592,8 +1593,8 @@ contains
    !    30      UKAEA 1025-group structure
    !    31      UKAEA 1067-group structure
    !    32      UKAEA 1102-group structure
-   !    33      UKAEA  142-group structure   
-   !    34      LANL 618 group structure   
+   !    33      UKAEA  142-group structure
+   !    34      LANL 618 group structure
    !
    !-------------------------------------------------------------------
    use mainio ! provides nsyso
@@ -1603,6 +1604,7 @@ contains
    real(kr),dimension(:),allocatable::egn
    ! internals
    integer::lflag,ig,ngp,n1,n2,n,ic
+   integer::ngp_hold
    real(kr)::u,du,delta
    real(kr),dimension(241),parameter::gl2=(/&
      27.631e0_kr,17.0e0_kr,16.75e0_kr,16.588e0_kr,16.5e0_kr,16.3e0_kr,&
@@ -3537,7 +3539,7 @@ contains
      1.202264e+08_kr,1.258925e+08_kr,1.318257e+08_kr,1.380384e+08_kr,&
      1.445440e+08_kr,1.513561e+08_kr,1.584893e+08_kr,1.659587e+08_kr,&
      1.737801e+08_kr,1.819701e+08_kr,1.905461e+08_kr,1.995262e+08_kr/)
-   real(kr),dimension(1103),parameter::eg32=(/& 
+   real(kr),dimension(1103),parameter::eg32=(/&
      1.000000e-05_kr,1.047129e-05_kr,1.096478e-05_kr,1.148154e-05_kr,&
      1.202264e-05_kr,1.258925e-05_kr,1.318257e-05_kr,1.380384e-05_kr,&
      1.445440e-05_kr,1.513561e-05_kr,1.584893e-05_kr,1.659587e-05_kr,&
@@ -3814,7 +3816,7 @@ contains
      6.309573e+08_kr,6.606934e+08_kr,6.918310e+08_kr,7.244360e+08_kr,&
      7.585776e+08_kr,7.943282e+08_kr,8.317638e+08_kr,8.709636e+08_kr,&
      9.120108e+08_kr,9.549926e+08_kr,1.000000e+09_kr/)
-   real(kr),dimension(143),parameter::eg33=(/& 
+   real(kr),dimension(143),parameter::eg33=(/&
      5.000000e+03_kr,1.000000e+04_kr,1.500000e+04_kr,2.000000e+04_kr,&
      2.500000e+04_kr,3.000000e+04_kr,3.500000e+04_kr,4.000000e+04_kr,&
      4.500000e+04_kr,5.000000e+04_kr,5.500000e+04_kr,6.000000e+04_kr,&
@@ -3851,7 +3853,7 @@ contains
      5.500000e+07_kr,6.000000e+07_kr,7.000000e+07_kr,8.000000e+07_kr,&
      9.000000e+07_kr,1.000000e+08_kr,1.200000e+08_kr,1.400000e+08_kr,&
      1.600000e+08_kr,1.800000e+08_kr,2.000000e+08_kr/)
-   real(kr),dimension(619),parameter::eg618=(/& 
+   real(kr),dimension(619),parameter::eg618=(/&
      1.00000000000000e-05_kr,2.56901129797510e-05_kr,4.23558357164050e-05_kr,&
      6.98329672839171e-05_kr,1.15135098557100e-04_kr,1.39000000000000e-04_kr,&
      1.89825685995247e-04_kr,2.43741005558083e-04_kr,3.12969646225607e-04_kr,&
@@ -4075,6 +4077,7 @@ contains
    real(kr),parameter::sandc=2.8e-4_kr
    real(kr),parameter::sandd=1.e6_kr
    real(kr),parameter::sande=1.e5_kr
+   real(kr),parameter::sandf=1.e6_kr
    real(kr),parameter::uu80=.6931472e0_kr
    real(kr),parameter::e175=1.284e7_kr
 
@@ -4219,8 +4222,9 @@ contains
       enddo
 
    !--sand-ii 620- and 640-group structures
-   else if (ign.eq.12.or.ign.eq.15) then
+   else if (ign.eq.12.or.ign.eq.15 .or. ign.eq.24) then
       ngn=620
+      if (ign.eq.24) ngn=770
       if (ign.eq.15) ngn=640
       ngp=ngn+1
       allocate(egn(ngp))
@@ -4458,6 +4462,36 @@ contains
          egn(ig)=eg618(ig)
       enddo
 
+   !--sand-ii 770--group structures
+   else if (ign.eq.35) then
+      ngn=770
+      ngp=ngn+1
+      allocate(egn(ngp))
+      egn(1)=sanda
+      ! generate the first 45 boundaries
+      do ig=1,8
+         delta=deltl(ig)*sandb
+         n1=ndelta(ig)
+         n2=ndelta(ig+1)-1
+         do n=n1,n2
+            egn(n)=egn(n-1)+delta
+         enddo
+      enddo
+      ! correct group 21
+      egn(21)=sandc
+      ! groups 46 to 450 are multiples of previous groups
+      do ig=46,450
+         egn(ig)=egn(ig-45)*10
+      enddo
+      ! groups 451 through 620 have constant spacing of 1.e5
+      egn(451)=sandd
+      do ig=452,641
+         egn(ig)=egn(ig-1)+sande
+      enddo
+      do ig=642,ngp
+         egn(ig)=egn(ig-1)+sandf
+      enddo
+
    !--illegal ign
    else
       call error('gengpn','illegal group structure.',' ')
@@ -4538,6 +4572,8 @@ contains
      &  '' neutron group structure......ukaea 1102-group'')')
    if (ign.eq.33) write(nsyso,'(/&
      &  '' neutron group structure......ukaea 142-group'')')
+   if (ign.eq.35) write(nsyso,'(/&
+     &  '' neutron group structure......sand-iv 770-group'')')
    if (ign.ne.-1) then
       do ig=1,ngn
          write(nsyso,'(1x,i5,2x,1p,e12.5,''  - '',e12.5)')&
